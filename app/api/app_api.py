@@ -161,7 +161,7 @@ async def app_page_recharge_create(request: Request, db: Session = Depends(get_d
 # ============ 1. 软件自助注册 ============
 @router.post("/register")
 @limiter.limit("5/minute")
-async def app_register(data: dict, db: Session = Depends(get_db)):
+async def app_register(request: Request, data: dict, db: Session = Depends(get_db)):
     app_name = (data.get('app_name') or '').strip()
     notify_url = (data.get('notify_url') or '').strip()
     logo_url = (data.get('logo_url') or '').strip()
