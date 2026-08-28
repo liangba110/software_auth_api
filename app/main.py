@@ -43,6 +43,8 @@ app.include_router(user_router, prefix="/api/user", tags=["用户接口"])
 app.include_router(recharge_router, prefix="/api/recharge", tags=["充值接口"])
 from app.api.app_api import router as app_router
 app.include_router(app_router, prefix="/api/app", tags=["软件接口"])
+from app.api.admin_api import router as admin_router
+app.include_router(admin_router, prefix="/api/admin", tags=["管理后台"])
 
 # 离线Swagger（不依赖外网CDN）
 @app.get("/docs", include_in_schema=False)
@@ -80,6 +82,17 @@ async def pay_test_page():
 async def app_pay_page(app_id: str):
     from pathlib import Path
     html = Path(__file__).parent / "templates" / "app_pay.html"
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(html.read_text(encoding="utf-8"))
+
+
+# 管理后台
+@app.get("/admin/", include_in_schema=False)
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/login", include_in_schema=False)
+async def admin_page():
+    from pathlib import Path
+    html = Path(__file__).parent / "templates" / "admin.html"
     from fastapi.responses import HTMLResponse
     return HTMLResponse(html.read_text(encoding="utf-8"))
 

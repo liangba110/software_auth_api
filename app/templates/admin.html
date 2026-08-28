@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>softapi 管理后台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:#f0f2f5; }
+.login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#667EEA 0%,#764BA2 100%); }
+.login-card { background:#fff; border-radius:16px; padding:40px; width:380px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.login-card h1 { text-align:center; font-size:22px; color:#333; margin-bottom:6px; }
+.login-card .sub { text-align:center; color:#999; font-size:13px; margin-bottom:28px; }
+.field { margin-bottom:16px; }
+.field input { width:100%; padding:12px 14px; border:1px solid #ddd; border-radius:8px; font-size:15px; outline:none; }
+.field input:focus { border-color:#667EEA; }
+.btn { width:100%; padding:13px; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; color:#fff; background:linear-gradient(135deg,#667EEA,#764BA2); }
+.btn:hover { opacity:.9; }
+.btn-sm { width:auto; padding:6px 14px; font-size:13px; border-radius:6px; border:none; cursor:pointer; color:#fff; background:#667EEA; margin-right:6px; }
+.btn-sm.green { background:#4caf50; } .btn-sm.red { background:#e53935; } .btn-sm.gray { background:#9e9e9e; }
+.btn-sm.orange { background:#fb8c00; }
+#msg { text-align:center; margin-top:14px; font-size:13px; color:#e53935; min-height:18px; }
+.layout { display:flex; min-height:100vh; }
+.sidebar { width:200px; background:#1a1a2e; color:#fff; padding:20px 0; }
+.sidebar .logo { padding:0 20px 20px; font-size:16px; font-weight:700; border-bottom:1px solid rgba(255,255,255,.1); }
+.sidebar .logo small { display:block; font-size:11px; color:#888; font-weight:400; margin-top:2px; }
+.sidebar nav a { display:block; padding:12px 20px; color:#ccc; text-decoration:none; font-size:14px; cursor:pointer; }
+.sidebar nav a:hover, .sidebar nav a.active { background:rgba(102,126,234,.2); color:#fff; border-left:3px solid #667EEA; }
+.main { flex:1; padding:24px; overflow:auto; }
+.topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.topbar h2 { font-size:20px; color:#333; }
+.topbar .user { font-size:13px; color:#666; }
+.topbar .user a { color:#e53935; cursor:pointer; margin-left:10px; }
+.stat-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.stat { background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.stat .num { font-size:26px; font-weight:700; color:#667EEA; margin-top:6px; }
+.stat .lbl { font-size:13px; color:#888; }
+.panel { background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.05); margin-bottom:20px; }
+.panel h3 { font-size:15px; color:#333; margin-bottom:14px; }
+.filters { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+.filters select, .filters input { padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+.filters .btn-sm { padding:8px 14px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 8px; background:#f8f9fa; color:#666; font-weight:600; white-space:nowrap; }
+td { padding:10px 8px; border-top:1px solid #f0f0f0; vertical-align:middle; }
+.tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; }
+.tag.on { background:#e8f5e9; color:#2e7d32; } .tag.off { background:#fbe9e7; color:#c62828; }
+.tag.p0 { background:#eee; color:#666; } .tag.p1 { background:#e3f2fd; color:#1565c0; }
+.tag.p2 { background:#e8f5e9; color:#2e7d32; } .tag.p3 { background:#fff3e0; color:#e65100; }
+.tag.p4 { background:#f3e5f5; color:#7b1fa2; }
+.pager { display:flex; gap:10px; align-items:center; margin-top:14px; font-size:13px; color:#666; }
+.modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:100; }
+.modal-mask.show { display:flex; }
+.modal { background:#fff; border-radius:12px; padding:24px; width:460px; max-width:92vw; }
+.modal h3 { margin-bottom:16px; }
+.modal .field { display:flex; gap:8px; align-items:center; }
+.modal .field label { width:110px; font-size:13px; color:#666; flex-shrink:0; }
+.modal .field input { flex:1; padding:9px 10px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+.modal .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+.goods-names { display:inline-block; margin-right:8px; }
+</style>
+</head>
+<body>
+<div id="loginView" class="login-wrap">
+  <div class="login-card">
+    <h1>softapi 管理后台</h1>
+    <div class="sub">软件授权支付平台</div>
+    <div class="field"><input id="luser" placeholder="管理员账号"></div>
+    <div class="field"><input id="lpass" type="password" placeholder="密码"></div>
+    <button class="btn" onclick="doLogin()">登 录</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<div id="mainView" class="layout" style="display:none">
+  <div class="sidebar">
+    <div class="logo">softapi 后台<small>软件授权支付平台</small></div>
+    <nav>
+      <a data-view="stats" class="active">📊 总览</a>
+      <a data-view="apps">📦 软件管理</a>
+      <a data-view="users">👥 用户管理</a>
+      <a data-view="orders">💰 充值账单</a>
+      <a data-view="vip">📜 开通记录</a>
+      <a data-view="pwd">🔑 修改密码</a>
+    </nav>
+  </div>
+  <div class="main">
+    <div class="topbar"><h2 id="pageTitle">总览</h2><div class="user" id="userInfo"></div></div>
+    <div id="viewStats"></div><div id="viewApps" style="display:none"></div>
+    <div id="viewUsers" style="display:none"></div><div id="viewOrders" style="display:none"></div>
+    <div id="viewVip" style="display:none"></div><div id="viewPwd" style="display:none"></div>
+  </div>
+</div>
+
+<div class="modal-mask" id="modalMask"><div class="modal" id="modalBox"></div></div>
+
+<script>
+let TOKEN = localStorage.getItem('sa_token') || '';
+let APPS = [];
+
+async function api(path, opts={}) {
+  const headers = {'Content-Type':'application/json'};
+  if(TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const r = await fetch('/api/admin'+path, {...opts, headers});
+  const d = await r.json();
+  if(d.code === 401 && path !== '/login') { showLogin(); }
+  return d;
+}
+function showLogin(){ document.getElementById('loginView').style.display='flex'; document.getElementById('mainView').style.display='none'; }
+async function doLogin(){
+  const u = document.getElementById('luser').value.trim(), p = document.getElementById('lpass').value;
+  const d = await api('/login', {method:'POST', body: JSON.stringify({username:u, password:p})});
+  if(d.code!==200) { document.getElementById('msg').textContent = d.msg; return; }
+  TOKEN = d.data.token; localStorage.setItem('sa_token', TOKEN);
+  document.getElementById('msg').textContent = '';
+  enterApp();
+}
+function enterApp(){
+  document.getElementById('loginView').style.display='none'; document.getElementById('mainView').style.display='flex';
+  document.getElementById('userInfo').innerHTML = '管理员 · <a onclick="logout()">退出</a>';
+  switchView('stats'); loadStats(); loadApps();
+}
+function logout(){ TOKEN=''; localStorage.removeItem('sa_token'); showLogin(); }
+function switchView(v){
+  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.toggle('active', a.dataset.view===v));
+  ['stats','apps','users','orders','vip','pwd'].forEach(x=>document.getElementById('view'+x[0].toUpperCase()+x.slice(1)).style.display = x===v?'block':'none');
+  const titles={stats:'总览',apps:'软件管理',users:'用户管理',orders:'充值账单',vip:'开通记录',pwd:'修改密码'};
+  document.getElementById('pageTitle').textContent = titles[v];
+  if(v==='users') loadUsers(); if(v==='orders') loadOrders(); if(v==='vip') loadVipLogs();
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function vipTag(t){ return `<span class="tag p${t}">${['普通','日卡','月卡','年卡','永久'][t]||t}</span>`; }
+function pageCtrl(page,total,pageSize,fn){ return `<div class="pager"><span>共${total}条</span><button class="btn-sm gray" onclick="${fn}(${page-1})">上一页</button><span>第${page}页</span><button class="btn-sm gray" onclick="${fn}(${page+1})">下一页</button></div>`; }
+
+async function loadStats(){
+  const d = await api('/stats');
+  if(d.code!==200) return;
+  const s = d.data;
+  document.getElementById('viewStats').innerHTML = `
+    <div class="stat-cards">
+      <div class="stat"><div class="lbl">软件数</div><div class="num">${s.apps}</div></div>
+      <div class="stat"><div class="lbl">用户数</div><div class="num">${s.users}</div></div>
+      <div class="stat"><div class="lbl">订单总数</div><div class="num">${s.orders}</div></div>
+      <div class="stat"><div class="lbl">今日充值 ¥</div><div class="num">${s.today_amount}</div></div>
+    </div>
+    <div class="panel"><h3>今日订单：${s.today_orders} 笔 · 已支付订单：${s.paid_orders} 笔</h3></div>`;
+}
+
+async function loadApps(){
+  const d = await api('/apps');
+  if(d.code!==200) return;
+  APPS = d.data;
+  document.getElementById('viewApps').innerHTML = `
+    <div class="panel">
+      <h3>软件列表 <button class="btn-sm green" onclick="showAppModal()">+ 新增软件</button></h3>
+      <table><tr><th>ID</th><th>软件名</th><th>app_id</th><th>日卡</th><th>月卡</th><th>年卡</th><th>永久</th><th>状态</th><th>创建时间</th><th>操作</th></tr>
+      ${d.data.map(a=>`<tr>
+        <td>${a.id}</td><td>${esc(a.app_name)}</td><td style="font-size:11px">${a.app_id}</td>
+        <td>¥${a.price_1}</td><td>¥${a.price_2}</td><td>¥${a.price_3}</td><td>¥${a.price_4}</td>
+        <td>${a.status===1?'<span class="tag on">启用</span>':'<span class="tag off">禁用</span>'}</td>
+        <td>${a.create_time}</td>
+        <td><button class="btn-sm" onclick='showAppModal(${JSON.stringify(a)})'>编辑</button>
+            <button class="btn-sm ${a.status===1?'red':'green'}" onclick="toggleApp('${a.app_id}',${a.status===1?0:1})">${a.status===1?'禁用':'启用'}</button></td>
+      </tr>`).join('')}
+      </table>
+    </div>`;
+}
+async function toggleApp(appId,status){
+  const d = await api('/apps/'+appId, {method:'PUT', body: JSON.stringify({status})});
+  if(d.code===200) loadApps(); else alert(d.msg);
+}
+function showAppModal(a){
+  a = a || {};
+  document.getElementById('modalBox').innerHTML = `
+    <h3>${a.app_id?'编辑软件':'新增软件'}</h3>
+    <div class="field"><label>软件名称</label><input id="m_name" value="${esc(a.app_name||'')}"></div>
+    <div class="field"><label>回调URL</label><input id="m_notify" value="${esc(a.notify_url||'')}" placeholder="https://.../notify"></div>
+    <div class="field"><label>Logo地址</label><input id="m_logo" value="${esc(a.logo_url||'')}"></div>
+    <div class="field"><label>日卡 ¥</label><input id="m_p1" type="number" value="${a.price_1||9.9}"></div>
+    <div class="field"><label>月卡 ¥</label><input id="m_p2" type="number" value="${a.price_2||29.9}"></div>
+    <div class="field"><label>年卡 ¥</label><input id="m_p3" type="number" value="${a.price_3||199.9}"></div>
+    <div class="field"><label>永久 ¥</label><input id="m_p4" type="number" value="${a.price_4||520}"></div>
+    <div class="actions">
+      <button class="btn-sm gray" onclick="closeModal()">取消</button>
+      <button class="btn-sm green" onclick="saveApp('${a.app_id||''}')">保存</button>
+    </div>`;
+  document.getElementById('modalMask').classList.add('show');
+}
+async function saveApp(appId){
+  const body = {app_name: m_name.value, notify_url: m_notify.value, logo_url: m_logo.value,
+    price_1: parseFloat(m_p1.value), price_2: parseFloat(m_p2.value), price_3: parseFloat(m_p3.value), price_4: parseFloat(m_p4.value)};
+  const d = appId ? await api('/apps/'+appId, {method:'PUT', body: JSON.stringify(body)})
+                   : await api('/apps', {method:'POST', body: JSON.stringify(body)});
+  if(d.code===200){ closeModal(); loadApps(); if(d.data && d.data.app_key) alert('创建成功！app_id: '+d.data.app_id+'\napp_key: '+d.data.app_key+'\n请妥善保存'); }
+  else alert(d.msg);
+}
+function closeModal(){ document.getElementById('modalMask').classList.remove('show'); }
+
+async function loadUsers(page=1){
+  const aid = document.getElementById('f_uapp')?.value || '';
+  const kw = document.getElementById('f_ukw')?.value || '';
+  const d = await api('/users?page='+page+'&page_size=15'+(aid?'&app_id='+aid:'')+(kw?'&keyword='+encodeURIComponent(kw):''));
+  if(d.code!==200) return;
+  const sel = `<select id="f_uapp" onchange="loadUsers()"><option value="">全部软件</option>${APPS.map(a=>`<option value="${a.app_id}" ${a.app_id===aid?'selected':''}>${esc(a.app_name)}</option>`).join('')}</select>`;
+  document.getElementById('viewUsers').innerHTML = `
+    <div class="panel">
+      <h3>用户管理</h3>
+      <div class="filters">${sel}<input id="f_ukw" placeholder="搜索用户名" value="${esc(kw)}"><button class="btn-sm" onclick="loadUsers()">搜索</button></div>
+      <table><tr><th>ID</th><th>软件</th><th>用户名</th><th>权限</th><th>过期时间</th><th>状态</th><th>注册时间</th><th>操作</th></tr>
+      ${d.data.list.map(u=>`<tr>
+        <td>${u.id}</td><td>${esc(u.app_name)}</td><td>${esc(u.username)}</td>
+        <td>${vipTag(u.vip_type)}</td><td>${esc(u.vip_expire_time||'—')}</td>
+        <td>${u.status===1?'<span class="tag on">正常</span>':'<span class="tag off">封禁</span>'}</td>
+        <td>${esc(u.create_time||'')}</td>
+        <td><button class="btn-sm" onclick="showUserModal(${u.id})">调整权限</button>
+            <button class="btn-sm ${u.status===1?'red':'green'}" onclick="toggleUser(${u.id},${u.status===1?0:1})">${u.status===1?'封禁':'解封'}</button></td>
+      </tr>`).join('')}
+      </table>
+      ${pageCtrl(page,d.data.total,15,'loadUsers')}
+    </div>`;
+}
+async function toggleUser(uid,status){
+  const d = await api('/users/'+uid, {method:'PUT', body: JSON.stringify({status, log: status===0?'封禁账号':'解封账号'})});
+  if(d.code===200) loadUsers(); else alert(d.msg);
+}
+function showUserModal(uid){
+  document.getElementById('modalBox').innerHTML = `
+    <h3>调整用户权限 (ID:${uid})</h3>
+    <div class="field"><label>权限类型</label>
+      <select id="m_vip"><option value="0">普通</option><option value="1">日卡</option><option value="2">月卡</option><option value="3">年卡</option><option value="4">永久</option></select></div>
+    <div class="field"><label>过期时间</label><input id="m_exp" type="datetime-local"></div>
+    <div class="field"><label>操作备注</label><input id="m_op" value="手动调整"></div>
+    <div class="actions"><button class="btn-sm gray" onclick="closeModal()">取消</button>
+      <button class="btn-sm green" onclick="saveUser(${uid})">保存</button></div>`;
+  document.getElementById('modalMask').classList.add('show');
+}
+async function saveUser(uid){
+  const exp = m_exp.value ? m_exp.value.replace('T',' ') + ':00' : null;
+  const d = await api('/users/'+uid, {method:'PUT', body: JSON.stringify({vip_type: parseInt(m_vip.value), vip_expire_time: exp, log: m_op.value||'手动调整'})});
+  if(d.code===200){ closeModal(); loadUsers(); } else alert(d.msg);
+}
+
+async function loadOrders(page=1){
+  const aid = document.getElementById('f_oapp')?.value || '';
+  const st = document.getElementById('f_ost')?.value ?? '';
+  const sn = document.getElementById('f_osn')?.value || '';
+  const d = await api('/orders?page='+page+'&page_size=15'+(aid?'&app_id='+aid:'')+(st!==''?'&status='+st:'')+(sn?'&order_sn='+encodeURIComponent(sn):''));
+  if(d.code!==200) return;
+  const sel = `<select id="f_oapp" onchange="loadOrders()"><option value="">全部软件</option>${APPS.map(a=>`<option value="${a.app_id}" ${a.app_id===aid?'selected':''}>${esc(a.app_name)}</option>`).join('')}</select>`;
+  const stsel = `<select id="f_ost" onchange="loadOrders()"><option value="">全部状态</option><option value="0" ${st==='0'?'selected':''}>待支付</option><option value="1" ${st==='1'?'selected':''}>已支付</option><option value="2" ${st==='2'?'selected':''}>已过期</option></select>`;
+  document.getElementById('viewOrders').innerHTML = `
+    <div class="panel">
+      <h3>充值账单</h3>
+      <div class="filters">${sel}${stsel}<input id="f_osn" placeholder="订单号" value="${esc(sn)}"><button class="btn-sm" onclick="loadOrders()">搜索</button></div>
+      <table><tr><th>订单号</th><th>软件</th><th>用户ID</th><th>套餐</th><th>金额</th><th>状态</th><th>回调</th><th>支付时间</th></tr>
+      ${d.data.list.map(o=>`<tr>
+        <td style="font-size:11px">${o.order_sn}</td><td>${esc(o.app_name)}</td><td>${o.user_id}</td>
+        <td>${['','日卡','月卡','年卡','永久'][o.goods_type]||o.goods_type}</td><td>¥${o.amount}</td>
+        <td>${o.status===1?'<span class="tag on">已支付</span>':o.status===2?'<span class="tag off">已过期</span>':'<span class="tag p0">待支付</span>'}</td>
+        <td>${o.notify_status===1?'<span class="tag on">已通知</span>':'<span class="tag p0">未通知</span>'}</td>
+        <td>${esc(o.pay_time||'—')}</td>
+      </tr>`).join('')}
+      </table>
+      ${pageCtrl(page,d.data.total,15,'loadOrders')}
+    </div>`;
+}
+
+async function loadVipLogs(page=1){
+  const aid = document.getElementById('f_vapp')?.value || '';
+  const kw = document.getElementById('f_vkw')?.value || '';
+  const d = await api('/vip-logs?page='+page+'&page_size=15'+(aid?'&app_id='+aid:'')+(kw?'&keyword='+encodeURIComponent(kw):''));
+  if(d.code!==200) return;
+  const sel = `<select id="f_vapp" onchange="loadVipLogs()"><option value="">全部软件</option>${APPS.map(a=>`<option value="${a.app_id}" ${a.app_id===aid?'selected':''}>${esc(a.app_name)}</option>`).join('')}</select>`;
+  document.getElementById('viewVip').innerHTML = `
+    <div class="panel">
+      <h3>开通记录</h3>
+      <div class="filters">${sel}<input id="f_vkw" placeholder="搜索用户名" value="${esc(kw)}"><button class="btn-sm" onclick="loadVipLogs()">搜索</button></div>
+      <table><tr><th>时间</th><th>软件</th><th>用户</th><th>操作</th><th>旧权限</th><th>新权限</th><th>旧过期</th><th>新过期</th><th>操作者</th></tr>
+      ${d.data.list.map(l=>`<tr>
+        <td>${l.create_time}</td><td>${esc(l.app_name)}</td><td>${esc(l.username)} (${l.user_id})</td>
+        <td>${esc(l.operate_type||'—')}</td><td>${vipTag(l.old_vip_type)}</td><td>${vipTag(l.new_vip_type)}</td>
+        <td style="font-size:11px">${esc(l.old_expire_time||'—')}</td><td style="font-size:11px">${esc(l.new_expire_time||'—')}</td>
+        <td>${esc(l.operator||'—')}</td>
+      </tr>`).join('')}
+      </table>
+      ${pageCtrl(page,d.data.total,15,'loadVipLogs')}
+    </div>`;
+}
+
+document.getElementById('viewPwd').innerHTML = `
+  <div class="panel" style="max-width:480px">
+    <h3>修改密码</h3>
+    <div class="field"><label>原密码</label><input id="p_old" type="password"></div>
+    <div class="field"><label>新密码</label><input id="p_new" type="password"></div>
+    <button class="btn-sm green" onclick="changePwd()">保存</button>
+  </div>`;
+async function changePwd(){
+  const d = await api('/password', {method:'PUT', body: JSON.stringify({old_password: p_old.value, new_password: p_new.value})});
+  alert(d.msg); if(d.code===200){ p_old.value=''; p_new.value=''; }
+}
+
+// init
+if(TOKEN){ enterApp(); } else { showLogin(); }
+</script>
+</body>
+</html>

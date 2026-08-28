@@ -106,11 +106,11 @@ document.getElementById('btnLogin').onclick = async () => {
   const p = document.getElementById('password').value;
   if(!username || !p) return alert('请填写账号密码');
   setStatus('登录中...', 'warn');
-  let r = await api('/page/login', {username, password});
+  let r = await api('/page/login', {username, password: p});
   if(r.code!==200){
-    r = await api('/page/register', {username, password});
+    r = await api('/page/register', {username, password: p});
     if(r.code!==200) return setStatus('注册失败: '+r.msg, 'err');
-    r = await api('/page/login', {username, password});
+    r = await api('/page/login', {username, password: p});
   }
   token = r.data.token;
   document.getElementById('btnPay').disabled = false;

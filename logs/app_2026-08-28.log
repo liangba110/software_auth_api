@@ -12062,3 +12062,5 @@ TypeError: Object of type RechargeOrder is not JSON serializable
 2026-08-28 21:04:10.975 | INFO     | app.service.recharge_service:recharge_callback_handle:98 - 用户test_user充值成功，自动开通VIP5，过期时间：2026-08-30 20:44:46
 2026-08-28 21:20:05.319 | INFO     | app.api.app_api:app_recharge_callback:322 - [APP1787923178330]用户appuser1充值成功, VIP2, 过期:2026-09-27 21:20:05.298427
 2026-08-28 21:20:06.702 | ERROR    | app.api.app_api:app_recharge_callback:330 - 转发软件回调失败 https://example.com/notify: HTTP Error 405: Method Not Allowed
+2026-08-28 22:58:35.556 | INFO     | app.api.app_api:app_recharge_callback:322 - [APP1787927371778]用户web_test_1787928555969充值成功, VIP1, 过期:2026-08-29 22:58:35.548907
+2026-08-28 22:58:36.012 | ERROR    | app.api.app_api:app_recharge_callback:330 - 转发软件回调失败 https://example.com/pay/notify: HTTP Error 405: Method Not Allowed

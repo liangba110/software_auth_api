@@ -21,6 +21,14 @@ GOODS_PRICE = {1: 9.9, 2: 29.9, 3: 199.9, 4: 520.0}
 GOODS_DAYS = {1: 1, 2: 30, 3: 365, 4: None}  # None=永久
 
 
+def _app_price(app, goods_type: int) -> float:
+    """取软件自定义价格，未设置则用全局默认"""
+    v = getattr(app, f'price_{goods_type}', None)
+    if v is not None and float(v) > 0:
+        return float(v)
+    return GOODS_PRICE.get(goods_type, 0)
+
+
 def _md5(s: str) -> str:
     return hashlib.md5(s.encode()).hexdigest()
 
@@ -129,7 +137,7 @@ async def app_page_recharge_create(request: Request, db: Session = Depends(get_d
     payload = parse_token(token)
     if not payload or payload.get('app_id') != app_id:
         return fail(code=401, msg="登录已过期")
-    amount = GOODS_PRICE.get(goods_type, 0)
+    amount = _app_price(app, goods_type)
     if amount <= 0:
         return fail(msg="套餐不存在")
     order_sn = 'SA2' + str(int(time.time())) + str(random.randint(1000, 9999))
@@ -249,7 +257,7 @@ async def app_recharge_create(request: Request, db: Session = Depends(get_db)):
     payload = parse_token(token)
     if not payload or payload.get('app_id') != app_id:
         return fail(code=401, msg="登录已过期")
-    amount = GOODS_PRICE.get(goods_type, 0)
+    amount = _app_price(app, goods_type)
     if amount <= 0:
         return fail(msg="套餐不存在")
     order_sn = 'SA2' + str(int(time.time())) + str(random.randint(1000, 9999))
@@ -318,7 +326,17 @@ async def app_recharge_callback(request: Request, db: Session = Depends(get_db))
             base = user.vip_expire_time if (user.vip_expire_time and user.vip_expire_time > now) else now
             days = GOODS_DAYS.get(order.goods_type)
             new_exp = None if days is None else base + timedelta(days=days)
+            old_exp = user.vip_expire_time
+            old_vip = user.vip_type
             update_app_user_vip(db, user.id, order.goods_type, new_exp)
+            # 记录开通日志
+            from app.models.app_vip_log import AppVipLog
+            log = AppVipLog(app_id=order.app_id, user_id=user.id, username=user.username,
+                            order_sn=order_sn, old_vip_type=old_vip, new_vip_type=order.goods_type,
+                            old_expire_time=old_exp, new_expire_time=new_exp,
+                            operate_type="微信充值", operator="system")
+            db.add(log)
+            db.commit()
             logger.info(f"[{order.app_id}]用户{user.username}充值成功, VIP{order.goods_type}, 过期:{new_exp}")
     # 转发到软件 notify_url
     app = get_app_by_id(db, order.app_id)
