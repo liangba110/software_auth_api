@@ -32,6 +32,7 @@ class Settings:
     LOCK_SECOND = 600          # 锁定时长(秒) 10分钟
 
     # 支付回调签名密钥（生产请改为随机强密钥并切换为支付宝RSA2/微信V3官方验签）
+    GATEWAY_TOKEN = os.getenv("GATEWAY_TOKEN", "huizhiyun_gateway_2026")  # 网关简单Token
     CALLBACK_SIGN_KEY = os.getenv("CALLBACK_SIGN_KEY", "6811244fda862f9491c75bae0685c7ceec9d2f6300f519a5")
 
 

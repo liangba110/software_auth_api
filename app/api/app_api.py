@@ -1,3 +1,4 @@
+from app.config.settings import settings
 import os
 from fastapi import APIRouter, Depends, Request
 
@@ -300,11 +301,14 @@ async def app_recharge_query(app_id: str, token: str, order_sn: str, db: Session
 
 # ============ 7. 订单列表 ============
 @router.get("/recharge/list")
-async def app_recharge_list(app_id: str, token: str, db: Session = Depends(get_db)):
+async def app_recharge_list(request: Request, app_id: str, db: Session = Depends(get_db)):
+    token = get_token_from_header(request)
     payload = parse_token(token)
     if not payload or payload.get('app_id') != app_id:
         return fail(code=401, msg="登录已过期")
-    orders = list_app_orders(db, app_id, payload['user_id'])
+    page = int(request.query_params.get("page", 1))
+    page_size = int(request.query_params.get("page_size", 20))
+    orders = list_app_orders(db, app_id, payload['user_id'], page, page_size)
     return success(data=[{
         "order_sn": o.order_sn,
         "amount": float(o.amount),
@@ -318,7 +322,7 @@ async def app_recharge_list(app_id: str, token: str, db: Session = Depends(get_d
 @router.post("/recharge/callback")
 async def app_recharge_callback(request: Request, db: Session = Depends(get_db)):
     token = request.headers.get("X-Pay-Token", "")
-    expected = os.getenv("CALLBACK_SIGN_KEY", "huizhiyun_gateway_2026")
+    expected = settings.GATEWAY_TOKEN
     if token != expected:
         return fail(msg="签名无效")
     body = await request.json()
