@@ -299,6 +299,11 @@ async function changePwd(){
   alert(d.msg); if(d.code===200){ p_old.value=''; p_new.value=''; }
 }
 
+// 导航点击绑定
+document.querySelectorAll('.sidebar nav a').forEach(a => {
+  a.addEventListener('click', () => switchView(a.dataset.view));
+});
+
 // init
 if(TOKEN){ enterApp(); } else { showLogin(); }
 </script>
