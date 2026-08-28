@@ -1,3 +1,5 @@
+import secrets
+import os
 """
 softapi 管理后台 API
 管理员认证: Bearer Token (JWT, admin secret)
@@ -13,12 +15,13 @@ from app.models.app_order import AppOrder
 from app.models.app_vip_log import AppVipLog
 from app.common.response import success, fail
 from app.common.security import hash_password, verify_password
+from app.common.limiter import limiter
 from app.config.settings import settings
 from datetime import datetime, timedelta
 
 router = APIRouter()
 
-ADMIN_SECRET = settings.JWT_SECRET + '_admin'
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "") or (settings.JWT_SECRET + '_admin')
 
 
 def _admin_token(user_id: int) -> str:
@@ -46,6 +49,7 @@ def _check_admin(admin):
 
 # ============ 登录 ============
 @router.post("/login")
+@limiter.limit("5/minute")
 async def admin_login(request: Request, db: Session = Depends(get_db)):
     body = await request.json()
     username = (body.get('username') or '').strip()
@@ -284,8 +288,8 @@ async def admin_password(request: Request, authorization: str = Header(default="
     new_pwd = body.get('new_password', '')
     if not verify_password(old_pwd, admin.password):
         return fail(msg="原密码错误")
-    if len(new_pwd) < 6:
-        return fail(msg="新密码至少6位")
+    if len(new_pwd) < 8:
+        return fail(msg="新密码至少8位")
     admin.password = hash_password(new_pwd)
     db.commit()
     return success(msg="密码已修改")

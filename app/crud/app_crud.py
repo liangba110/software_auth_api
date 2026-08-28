@@ -67,6 +67,6 @@ def mark_app_order_notified(db: Session, order_sn: str):
         o.notify_status = 1
         db.commit()
 
-def list_app_orders(db: Session, app_id: str, user_id: int, limit: int = 20):
+def list_app_orders(db: Session, app_id: str, user_id: int, page: int = 1, page_size: int = 20):
     return db.query(AppOrder).filter(AppOrder.app_id == app_id, AppOrder.user_id == user_id) \
-        .order_by(AppOrder.create_time.desc()).limit(limit).all()
+        .order_by(AppOrder.create_time.desc()).offset((page-1)*page_size).limit(page_size).all()
