@@ -31,15 +31,20 @@ def _admin_token(user_id: int) -> str:
 
 
 def require_admin(authorization: str = Header(default=""), db: Session = Depends(get_db)):
+    from fastapi import HTTPException
     if not authorization.startswith("Bearer "):
-        return None
+        raise HTTPException(status_code=401, detail="未登录")
     import jwt
     try:
         payload = jwt.decode(authorization[7:], ADMIN_SECRET, algorithms=["HS256"])
         admin = db.query(AdminUser).filter(AdminUser.id == payload.get("admin_id")).first()
+        if not admin:
+            raise HTTPException(status_code=401, detail="管理员不存在")
         return admin
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="登录已过期")
     except Exception:
-        return None
+        raise HTTPException(status_code=401, detail="token无效")
 
 
 def _check_admin(admin):
@@ -106,7 +111,7 @@ async def admin_app_create(request: Request, authorization: str = Header(default
     if not app_name:
         return fail(msg="软件名称必填")
     app_id = 'APP' + secrets.token_hex(8)
-    app_key = hashlib.md5((str(time.time()) + app_name).encode()).hexdigest()[:32]
+    app_key = secrets.token_hex(16)
     from app.crud.app_crud import create_app
     app = create_app(db, app_id, app_key, app_name,
                      logo_url=(body.get('logo_url') or '').strip() or None,
