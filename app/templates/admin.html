@@ -97,6 +97,7 @@ td { padding:10px 8px; border-top:1px solid #f0f0f0; vertical-align:middle; }
 <script>
 let TOKEN = localStorage.getItem('sa_token') || '';
 let APPS = [];
+let USERS_CACHE = {};
 
 async function api(path, opts={}) {
   const headers = {'Content-Type':'application/json'};
@@ -201,6 +202,8 @@ async function loadUsers(page=1){
   const kw = document.getElementById('f_ukw')?.value || '';
   const d = await api('/users?page='+page+'&page_size=15'+(aid?'&app_id='+aid:'')+(kw?'&keyword='+encodeURIComponent(kw):''));
   if(d.code!==200) return;
+  USERS_CACHE = {};
+  d.data.list.forEach(u => USERS_CACHE[u.id] = u);
   const sel = `<select id="f_uapp" onchange="loadUsers()"><option value="">全部软件</option>${APPS.map(a=>`<option value="${a.app_id}" ${a.app_id===aid?'selected':''}>${esc(a.app_name)}</option>`).join('')}</select>`;
   document.getElementById('viewUsers').innerHTML = `
     <div class="panel">
@@ -224,19 +227,37 @@ async function toggleUser(uid,status){
   if(d.code===200) loadUsers(); else alert(d.msg);
 }
 function showUserModal(uid){
+  const user = USERS_CACHE[uid] || {};
+  const hasExp = user.vip_expire_time && user.vip_type > 0;
+  const expVal = hasExp ? user.vip_expire_time.replace(' ', 'T') : '';
   document.getElementById('modalBox').innerHTML = `
-    <h3>调整用户权限 (ID:${uid})</h3>
+    <h3>调整用户权限 (ID:${uid} · ${esc(user.username||'')})</h3>
     <div class="field"><label>权限类型</label>
       <select id="m_vip"><option value="0">普通</option><option value="1">日卡</option><option value="2">月卡</option><option value="3">年卡</option><option value="4">永久</option></select></div>
-    <div class="field"><label>过期时间</label><input id="m_exp" type="datetime-local"></div>
+    <div class="field"><label>过期时间</label><input id="m_exp" type="datetime-local" value="${expVal}"></div>
+    <div class="field" style="font-size:12px;color:#888;margin-top:-8px">留空时自动计算：日卡+1天 / 月卡+30天 / 年卡+365天 / 永久不过期</div>
     <div class="field"><label>操作备注</label><input id="m_op" value="手动调整"></div>
     <div class="actions"><button class="btn-sm gray" onclick="closeModal()">取消</button>
       <button class="btn-sm green" onclick="saveUser(${uid})">保存</button></div>`;
+  document.getElementById('m_vip').value = String(user.vip_type || 0);
   document.getElementById('modalMask').classList.add('show');
 }
 async function saveUser(uid){
-  const exp = m_exp.value ? m_exp.value.replace('T',' ') + ':00' : null;
-  const d = await api('/users/'+uid, {method:'PUT', body: JSON.stringify({vip_type: parseInt(m_vip.value), vip_expire_time: exp, log: m_op.value||'手动调整'})});
+  const vipType = parseInt(m_vip.value);
+  let exp = null;
+  if(vipType > 0 && vipType < 4){
+    // 日/月/年卡：填了就按填的，没填自动计算
+    if(m_exp.value){
+      exp = m_exp.value.replace('T',' ') + ':00';
+    } else {
+      const days = {1:1, 2:30, 3:365}[vipType];
+      const d = new Date(Date.now() + days*86400000);
+      const pad = n => String(n).padStart(2,'0');
+      exp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+    }
+  }
+  // 永久=清空过期时间
+  const d = await api('/users/'+uid, {method:'PUT', body: JSON.stringify({vip_type: vipType, vip_expire_time: exp, log: m_op.value||'手动调整'})});
   if(d.code===200){ closeModal(); loadUsers(); } else alert(d.msg);
 }
 
