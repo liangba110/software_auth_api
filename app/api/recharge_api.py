@@ -1,4 +1,13 @@
 from fastapi import APIRouter, Depends, Form, Request
+import os
+def get_token_from_header(request: Request) -> str:
+    """从Authorization头获取token（兼容URL参数）"""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return request.query_params.get("token", "")
+
+
 from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.schemas.order_schema import CreateOrderSchema
@@ -9,7 +18,8 @@ from app.common.security import parse_token
 router = APIRouter()
 
 @router.post("/create")
-async def create_order(token: str, data: CreateOrderSchema, db: Session = Depends(get_db)):
+async def create_order(request: Request, data: CreateOrderSchema, db: Session = Depends(get_db)):
+    token = get_token_from_header(request)
     payload = parse_token(token)
     if not payload:
         return fail(code=401, msg="未登录")
@@ -58,16 +68,19 @@ async def pay_callback(request: Request, db: Session = Depends(get_db)):
     if status != 1 or not out_trade_no:
         return fail(msg="无效回调")
     
-    ok, msg = recharge_callback_handle(db, out_trade_no, out_trade_no)
+    ok, msg = recharge_callback_handle(db, out_trade_no, str(amount))
     if not ok:
         return fail(msg=msg)
     return success(msg=msg)
 
 @router.get("/list")
-async def order_list(token: str, db: Session = Depends(get_db)):
+async def order_list(request: Request, db: Session = Depends(get_db)):
     from app.crud.order_crud import get_user_order_list
+    token = get_token_from_header(request)
     payload = parse_token(token)
     if not payload:
         return fail(code=401, msg="未登录")
-    list_data = get_user_order_list(db, payload["user_id"])
+    page = int(request.query_params.get("page", 1))
+    page_size = int(request.query_params.get("page_size", 20))
+    list_data = get_user_order_list(db, payload["user_id"], page, page_size)
     return success(data=list_data)
