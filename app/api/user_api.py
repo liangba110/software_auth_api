@@ -62,16 +62,15 @@ async def auth(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/logout")
 async def logout(request: Request):
-    """退出登录（token加入黑名单1小时）"""
+    """退出登录（token加入Redis黑名单1小时）"""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         token = request.query_params.get("token", "")
     if token:
-        import time as _time
-        blacklist_file = "/opt/software_auth/token_blacklist.txt"
         try:
-            with open(blacklist_file, "a") as f:
-                f.write(f"{token}:{int(_time.time()) + 3600}\n")
-        except:
+            from app.service.user_service import get_redis
+            r = get_redis()
+            r.setex(f"blacklist:{token}", 3600, "1")
+        except Exception:
             pass
     return success(msg="退出成功")

@@ -19,12 +19,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # 生成JWT Token
-def create_token(user_id: int, username: str) -> str:
+def create_token(user_id: int, username: str, app_id: str = None) -> str:
     payload = {
         "user_id": user_id,
         "username": username,
         "exp": datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRE_HOURS)
     }
+    if app_id:
+        payload["app_id"] = app_id
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
