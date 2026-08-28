@@ -69,8 +69,6 @@ async def admin_login(request: Request, db: Session = Depends(get_db)):
 @router.get("/stats")
 async def admin_stats(authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     apps = db.query(App).count()
     users = db.query(AppUser).count()
     orders = db.query(AppOrder).count()
@@ -89,8 +87,6 @@ async def admin_stats(authorization: str = Header(default=""), db: Session = Dep
 @router.get("/apps")
 async def admin_apps(authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     apps = db.query(App).order_by(App.id.desc()).all()
     return success(data=[{
         "id": a.id, "app_id": a.app_id, "app_name": a.app_name,
@@ -104,8 +100,6 @@ async def admin_apps(authorization: str = Header(default=""), db: Session = Depe
 @router.post("/apps")
 async def admin_app_create(request: Request, authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     body = await request.json()
     app_name = (body.get('app_name') or '').strip()
     if not app_name:
@@ -128,8 +122,6 @@ async def admin_app_create(request: Request, authorization: str = Header(default
 @router.put("/apps/{app_id}")
 async def admin_app_update(app_id: str, request: Request, authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     app = db.query(App).filter(App.app_id == app_id).first()
     if not app:
         return fail(code=404, msg="软件不存在")
@@ -150,8 +142,6 @@ async def admin_app_update(app_id: str, request: Request, authorization: str = H
 @router.delete("/apps/{app_id}")
 async def admin_app_delete(app_id: str, authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     app = db.query(App).filter(App.app_id == app_id).first()
     if not app:
         return fail(code=404, msg="软件不存在")
@@ -170,8 +160,6 @@ async def admin_app_delete(app_id: str, authorization: str = Header(default=""),
 async def admin_users(app_id: str = "", keyword: str = "", page: int = 1, page_size: int = 20,
                       authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     q = db.query(AppUser)
     if app_id:
         q = q.filter(AppUser.app_id == app_id)
@@ -195,8 +183,6 @@ async def admin_users(app_id: str = "", keyword: str = "", page: int = 1, page_s
 @router.put("/users/{user_id}")
 async def admin_user_update(user_id: int, request: Request, authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     user = db.query(AppUser).filter(AppUser.id == user_id).first()
     if not user:
         return fail(code=404, msg="用户不存在")
@@ -228,8 +214,6 @@ async def admin_user_update(user_id: int, request: Request, authorization: str =
 async def admin_orders(app_id: str = "", status: str = "", order_sn: str = "", page: int = 1, page_size: int = 20,
                        authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     q = db.query(AppOrder)
     if app_id:
         q = q.filter(AppOrder.app_id == app_id)
@@ -258,8 +242,6 @@ async def admin_orders(app_id: str = "", status: str = "", order_sn: str = "", p
 async def admin_vip_logs(app_id: str = "", keyword: str = "", page: int = 1, page_size: int = 20,
                          authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     q = db.query(AppVipLog)
     if app_id:
         q = q.filter(AppVipLog.app_id == app_id)
@@ -286,8 +268,6 @@ async def admin_vip_logs(app_id: str = "", keyword: str = "", page: int = 1, pag
 @router.put("/password")
 async def admin_password(request: Request, authorization: str = Header(default=""), db: Session = Depends(get_db)):
     admin = require_admin(authorization, db)
-    if not admin:
-        return fail(code=401, msg="未登录")
     body = await request.json()
     old_pwd = body.get('old_password', '')
     new_pwd = body.get('new_password', '')
