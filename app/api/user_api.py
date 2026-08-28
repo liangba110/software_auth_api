@@ -7,6 +7,17 @@ from app.common.response import success, fail
 from app.common.security import parse_token
 from app.common.limiter import limiter
 
+
+def check_password_strength(password: str) -> tuple:
+    """密码强度校验: 至少8位，包含字母和数字"""
+    if len(password) < 8:
+        return False, "密码至少8位"
+    if not any(c.isalpha() for c in password):
+        return False, "密码必须包含字母"
+    if not any(c.isdigit() for c in password):
+        return False, "密码必须包含数字"
+    return True, ""
+
 router = APIRouter()
 
 @router.post("/register")

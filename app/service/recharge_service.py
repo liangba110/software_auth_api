@@ -10,11 +10,15 @@ GOODS_PRICE = {
     1: 9.9,
     2: 29.9,
     3: 199.9,
-    4: 520.0
+    4: 520.0,
+    5: 1.0
 }
 
 def gen_order_sn() -> str:
-    return str(int(time.time())) + str(random.randint(1000, 9999))
+    # SA前缀 = 统一支付网关回调路由标识（SA→softapi.openai2000.cn）
+    # 时间戳+4位随机+4位随机（更难预测）
+    import secrets
+    return 'SA' + str(int(time.time())) + secrets.token_hex(4)
 
 def create_recharge_order(db: Session, user_id: int, goods_type: int, pay_type: str):
     order_sn = gen_order_sn()
@@ -22,7 +26,8 @@ def create_recharge_order(db: Session, user_id: int, goods_type: int, pay_type: 
     if amount <= 0:
         return False, "套餐不存在"
     order = create_order(db, order_sn, user_id, pay_type, goods_type, amount)
-    pay_url = f"mock_pay_url_{order_sn}"
+    # 调用统一支付网关 Native 扫码（商户1114539763，pay.openai2000.cn）
+    pay_url = _create_native_pay(order_sn, amount)
     return True, {
         "order_sn": order_sn,
         "amount": float(amount),
@@ -30,10 +35,33 @@ def create_recharge_order(db: Session, user_id: int, goods_type: int, pay_type: 
         "pay_url": pay_url
     }
 
+def _create_native_pay(order_sn: str, amount: float) -> str:
+    """调统一支付网关 /api/v1/wxpay/native 获取微信扫码链接"""
+    import urllib.request, json as _json
+    payload = _json.dumps({
+        "out_trade_no": order_sn,
+        "amount": amount,
+        "subject": "广告信息展示服务"
+    }).encode()
+    req = urllib.request.Request(
+        "http://127.0.0.1:5005/api/v1/wxpay/native",
+        data=payload,
+        headers={"Content-Type": "application/json"})
+    try:
+        resp = urllib.request.urlopen(req, timeout=15)
+        data = _json.loads(resp.read().decode())
+        if data.get("code") == 0 and data.get("data", {}).get("code_url"):
+            return data["data"]["code_url"]
+        logger.error(f"网关下单失败: {data}")
+        return f"pay_error_{order_sn}"
+    except Exception as e:
+        logger.error(f"调用支付网关异常: {e}")
+        return f"pay_error_{order_sn}"
+
 def get_new_expire_time(old_expire, goods_type: int):
     now = datetime.now()
     base_time = old_expire if (old_expire and old_expire > now) else now
-    if goods_type == 1:
+    if goods_type == 1 or goods_type == 5:
         return base_time + timedelta(days=1)
     elif goods_type == 2:
         return base_time + timedelta(days=30)
