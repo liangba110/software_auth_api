@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, Request
 
 def get_token_from_header(request: Request) -> str:
@@ -359,8 +360,8 @@ async def app_recharge_callback(request: Request, db: Session = Depends(get_db))
     return success(msg="权限开通成功")
 
 
-def _notify_software(app, order):
-    """POST 到软件 notify_url（带签名）"""
+def _notify_software(app, order, max_retries=3):
+    """POST 到软件 notify_url（带签名 + 重试）"""
     import urllib.request
     ts = str(int(time.time()))
     payload = {
@@ -376,9 +377,20 @@ def _notify_software(app, order):
                 + f"order_sn{order.order_sn}" + f"status1" + f"timestamp{ts}"
                 + f"user_id{order.user_id}" + app.app_key + ts)
     payload["sign"] = sign
-    req = urllib.request.Request(
-        app.notify_url,
-        data=_json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"})
-    resp = urllib.request.urlopen(req, timeout=10)
-    return resp.status
+    
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(
+                app.notify_url,
+                data=_json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"})
+            resp = urllib.request.urlopen(req, timeout=10)
+            return resp.status
+        except Exception as e:
+            if attempt < max_retries - 1:
+                import time as _time
+                _time.sleep(2 ** attempt)  # 指数退避: 1s, 2s, 4s
+                logger.warning(f"转发重试 {attempt+1}/{max_retries}: {e}")
+            else:
+                logger.error(f"转发失败(已重试{max_retries}次): {e}")
+                raise

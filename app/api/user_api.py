@@ -1,4 +1,12 @@
 from fastapi import APIRouter, Depends, Request
+def get_token_from_header(request: Request) -> str:
+    """从Authorization头获取token（兼容URL参数）"""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return request.query_params.get("token", "")
+
+
 from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.schemas.user_schema import RegisterSchema, LoginSchema
@@ -41,7 +49,8 @@ async def login(request: Request, data: LoginSchema, db: Session = Depends(get_d
     return success(data=res)
 
 @router.get("/auth")
-async def auth(token: str, db: Session = Depends(get_db)):
+async def auth(request: Request, db: Session = Depends(get_db)):
+    token = get_token_from_header(request)
     payload = parse_token(token)
     if not payload:
         return fail(code=401, msg="登录已过期，请重新登录")
@@ -52,5 +61,17 @@ async def auth(token: str, db: Session = Depends(get_db)):
     return success(msg="权限正常")
 
 @router.post("/logout")
-async def logout():
+async def logout(request: Request):
+    """退出登录（token加入黑名单1小时）"""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        token = request.query_params.get("token", "")
+    if token:
+        import time as _time
+        blacklist_file = "/opt/software_auth/token_blacklist.txt"
+        try:
+            with open(blacklist_file, "a") as f:
+                f.write(f"{token}:{int(_time.time()) + 3600}\n")
+        except:
+            pass
     return success(msg="退出成功")

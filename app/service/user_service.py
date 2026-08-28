@@ -6,7 +6,14 @@ from app.config.settings import settings
 from app.config.logger import logger
 import redis
 
-r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB, decode_responses=True)
+# Redis连接延迟初始化（避免模块加载时连接）
+_redis = None
+
+def get_redis():
+    global _redis
+    if _redis is None:
+        _redis = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB, decode_responses=True)
+    return _redis
 
 def user_register(db: Session, username: str, password: str):
     if get_user_by_username(db, username):
@@ -18,8 +25,8 @@ def user_register(db: Session, username: str, password: str):
 
 def user_login(db: Session, username: str, password: str):
     lock_key = f"lock:{username}"
-    if r.exists(lock_key):
-        return False, f"账号已锁定，请{r.ttl(lock_key)}秒后重试"
+    if get_redis().exists(lock_key):
+        return False, f"账号已锁定，请{get_redis().ttl(lock_key)}秒后重试"
 
     user = get_user_by_username(db, username)
     if not user:
@@ -30,15 +37,15 @@ def user_login(db: Session, username: str, password: str):
 
     if not verify_password(password, user.password):
         err_key = f"err:{username}"
-        count = r.incr(err_key)
-        r.expire(err_key, settings.LOCK_SECOND)
+        count = get_redis().incr(err_key)
+        get_redis().expire(err_key, settings.LOCK_SECOND)
         if count >= settings.ERROR_MAX_COUNT:
-            r.setex(lock_key, settings.LOCK_SECOND, "1")
+            get_redis().setex(lock_key, settings.LOCK_SECOND, "1")
             logger.warning(f"账号{username}密码错误过多，已锁定")
             return False, "密码错误次数过多，账号已临时锁定"
         return False, "账号或密码错误"
 
-    r.delete(f"err:{username}")
+    get_redis().delete(f"err:{username}")
     update_user_login_time(db, user.id)
     token = create_token(user.id, user.username)
 
