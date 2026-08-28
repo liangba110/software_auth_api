@@ -24,6 +24,7 @@ from app.crud.app_crud import (get_app_by_id, create_app, get_app_user, create_a
 from app.common.response import success, fail
 from app.common.security import create_token, parse_token
 from app.config.logger import logger
+from app.common.limiter import limiter
 from datetime import datetime, timedelta
 
 router = APIRouter()
@@ -159,6 +160,7 @@ async def app_page_recharge_create(request: Request, db: Session = Depends(get_d
 
 # ============ 1. 软件自助注册 ============
 @router.post("/register")
+@limiter.limit("5/minute")
 async def app_register(data: dict, db: Session = Depends(get_db)):
     app_name = (data.get('app_name') or '').strip()
     notify_url = (data.get('notify_url') or '').strip()
@@ -166,7 +168,8 @@ async def app_register(data: dict, db: Session = Depends(get_db)):
     if not app_name or len(app_name) > 100:
         return fail(msg="软件名称必填且不超过100字")
     app_id = 'APP' + str(int(time.time())) + str(random.randint(100, 999))
-    app_key = _md5(str(time.time()) + str(random.random()) + app_name)[:32]
+    import secrets as _secrets
+    app_key = _secrets.token_hex(16)
     app = create_app(db, app_id, app_key, app_name, logo_url or None, notify_url or None)
     return success(data={"app_id": app.app_id, "app_key": app.app_key},
                    msg="注册成功，请妥善保存 app_key")
