@@ -105,7 +105,7 @@ async def admin_app_create(request: Request, authorization: str = Header(default
     app_name = (body.get('app_name') or '').strip()
     if not app_name:
         return fail(msg="软件名称必填")
-    app_id = 'APP' + str(int(time.time())) + str(int(hashlib.md5((app_name + str(time.time())).encode()).hexdigest()[:6], 16) % 900 + 100)
+    app_id = 'APP' + secrets.token_hex(8)
     app_key = hashlib.md5((str(time.time()) + app_name).encode()).hexdigest()[:32]
     from app.crud.app_crud import create_app
     app = create_app(db, app_id, app_key, app_name,
