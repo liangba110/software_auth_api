@@ -88,6 +88,7 @@ def _create_native_pay(order_sn: str, amount: float) -> str:
 
 # ============ 软件信息（公开，收银台用）============
 @router.get("/info")
+@limiter.limit("30/minute")
 async def app_info(app_id: str, db: Session = Depends(get_db)):
     app = require_app(app_id, db)
     if not app:
@@ -97,6 +98,7 @@ async def app_info(app_id: str, db: Session = Depends(get_db)):
 
 # ============ 网页收银台免签名接口（官方页面专用）============
 @router.post("/page/login")
+@limiter.limit("10/minute")
 async def app_page_login(request: Request, db: Session = Depends(get_db)):
     body = await request.json()
     app_id = body.get('app_id', '')
@@ -128,8 +130,8 @@ async def app_page_register(request: Request, db: Session = Depends(get_db)):
     app = require_app(app_id, db)
     if not app:
         return fail(code=401, msg="软件无效或已禁用")
-    if not username or not password or len(password) < 6:
-        return fail(msg="用户名必填，密码至少6位")
+    if not username or not password or len(password) < 8:
+        return fail(msg="用户名必填，密码至少8位")
     if get_app_user(db, app_id, username):
         return fail(msg="用户名已存在")
     from app.common.security import hash_password
@@ -152,7 +154,7 @@ async def app_page_recharge_create(request: Request, db: Session = Depends(get_d
     amount = _app_price(app, goods_type)
     if amount <= 0:
         return fail(msg="套餐不存在")
-    order_sn = 'SA2' + str(int(time.time())) + str(random.randint(1000, 9999))
+    order_sn = 'SA2' + str(int(time.time())) + secrets.token_hex(4)
     create_app_order(db, app_id, order_sn, payload['user_id'], 'wechat', goods_type, amount)
     pay_url = _create_native_pay(order_sn, amount)
     return success(data={"order_sn": order_sn, "amount": amount, "pay_url": pay_url}, msg="下单成功")
@@ -189,8 +191,8 @@ async def app_user_register(request: Request, db: Session = Depends(get_db)):
         return fail(code=401, msg="软件无效或已禁用")
     if not verify_sign(app.app_key, body, sign, timestamp):
         return fail(code=403, msg="签名无效")
-    if not username or not password or len(password) < 6:
-        return fail(msg="用户名必填，密码至少6位")
+    if not username or not password or len(password) < 8:
+        return fail(msg="用户名必填，密码至少8位")
     if get_app_user(db, app_id, username):
         return fail(msg="用户名已存在")
     from app.common.security import hash_password
@@ -234,7 +236,8 @@ async def app_user_login(request: Request, db: Session = Depends(get_db)):
 
 # ============ 4. 鉴权（客户端启动校验）============
 @router.get("/user/auth")
-async def app_user_auth(app_id: str, token: str, db: Session = Depends(get_db)):
+async def app_user_auth(request: Request, app_id: str, db: Session = Depends(get_db)):
+    token = get_token_from_header(request)
     payload = parse_token(token)
     if not payload or payload.get('app_id') != app_id:
         return fail(code=401, msg="登录已过期")
@@ -274,7 +277,7 @@ async def app_recharge_create(request: Request, db: Session = Depends(get_db)):
     amount = _app_price(app, goods_type)
     if amount <= 0:
         return fail(msg="套餐不存在")
-    order_sn = 'SA2' + str(int(time.time())) + str(random.randint(1000, 9999))
+    order_sn = 'SA2' + str(int(time.time())) + secrets.token_hex(4)
     create_app_order(db, app_id, order_sn, payload['user_id'], 'wechat', goods_type, amount)
     pay_url = _create_native_pay(order_sn, amount)
     return success(data={

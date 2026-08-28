@@ -68,7 +68,8 @@ async def pay_callback(request: Request, db: Session = Depends(get_db)):
     if status != 1 or not out_trade_no:
         return fail(msg="无效回调")
     
-    ok, msg = recharge_callback_handle(db, out_trade_no, str(amount))
+    transaction_id = body.get("transaction_id", out_trade_no)
+    ok, msg = recharge_callback_handle(db, out_trade_no, transaction_id)
     if not ok:
         return fail(msg=msg)
     return success(msg=msg)
