@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">软件授权充值</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:linear-gradient(135deg,#667EEA 0%,#764BA2 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.card { background:#fff; border-radius:16px; padding:32px; width:100%; max-width:440px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.brand { text-align:center; margin-bottom:24px; }
+.brand img { width:64px; height:64px; border-radius:16px; margin-bottom:10px; object-fit:cover; }
+.brand h1 { font-size:20px; color:#333; }
+.brand .sub { color:#999; font-size:13px; margin-top:4px; }
+.field { margin-bottom:14px; }
+label { display:block; font-size:13px; color:#666; margin-bottom:6px; }
+input { width:100%; padding:11px 14px; border:1px solid #ddd; border-radius:8px; font-size:15px; outline:none; }
+input:focus { border-color:#667EEA; }
+.btn { width:100%; padding:13px; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; color:#fff; background:linear-gradient(135deg,#667EEA,#764BA2); transition:opacity .2s; }
+.btn:hover { opacity:.9; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.step { font-size:12px; color:#999; margin:18px 0 8px; font-weight:600; }
+.qr-wrap { display:none; text-align:center; margin-top:16px; padding:20px; border:1px dashed #ddd; border-radius:12px; }
+.qr-wrap.show { display:block; }
+#qrcode img { width:220px; height:220px; }
+.qr-tip { font-size:13px; color:#666; margin-top:10px; }
+#status { font-size:13px; margin-top:12px; padding:10px; border-radius:8px; display:none; }
+#status.ok { background:#e8f5e9; color:#2e7d32; display:block; }
+#status.warn { background:#fff3e0; color:#e65100; display:block; }
+#status.err { background:#fbe9e7; color:#c62828; display:block; }
+.log { margin-top:14px; font-size:12px; color:#888; background:#f8f9fa; padding:10px; border-radius:8px; max-height:120px; overflow:auto; display:none; }
+.log.show { display:block; }
+.err-box { text-align:center; padding:40px 20px; color:#c62828; font-size:15px; }
+.err-box .sub { color:#999; font-size:13px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="card" id="cardMain">
+  <div class="brand">
+    <img id="brandLogo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiM2NjdFRUEiLz48dGV4dCB4PSIzMiIgeT0iNDAiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuy8mOW5vDwvdGV4dD48L3N2Zz4=" alt="logo">
+    <h1 id="brandName">软件授权充值</h1>
+    <div class="sub" id="brandSub">微信扫码支付 · 自动开通</div>
+  </div>
+
+  <div class="step">① 账号</div>
+  <div class="field"><input id="username" placeholder="登录账号（未注册自动注册）"></div>
+  <div class="field"><input id="password" type="password" placeholder="密码（至少6位）"></div>
+  <button class="btn" id="btnLogin">注册并登录</button>
+
+  <div class="step">② 选择套餐</div>
+  <div class="field">
+    <select id="goods" style="width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+      <option value="1">日卡 ¥9.9</option>
+      <option value="2" selected>月卡 ¥29.9</option>
+      <option value="3">年卡 ¥199.9</option>
+      <option value="4">永久 ¥520</option>
+    </select>
+  </div>
+  <button class="btn" id="btnPay" disabled>下单 · 生成支付二维码</button>
+
+  <div class="qr-wrap" id="qrWrap">
+    <div id="qrcode"></div>
+    <div class="qr-tip">📱 微信扫一扫支付</div>
+    <div class="qr-tip" style="font-size:12px;color:#bbb;">支付完成后自动检测</div>
+    <div id="status"></div>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+<div class="card" id="cardErr" style="display:none"><div class="err-box" id="errMsg"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+const APP_ID = location.pathname.split('/')[2] || '';
+let token = '';
+let username = '';
+
+function log(m){ const el=document.getElementById('log'); el.classList.add('show'); el.innerHTML = m + '<br>' + el.innerHTML; }
+function setStatus(t,c){ const el=document.getElementById('status'); el.textContent=t; el.className=c; }
+function showErr(m){ document.getElementById('cardMain').style.display='none'; document.getElementById('cardErr').style.display='block'; document.getElementById('errMsg').innerHTML=m; }
+function sign(params){
+  const ts = Math.floor(Date.now()/1000).toString();
+  const keys = Object.keys(params).filter(k=>k!=='sign'&&k!=='timestamp').sort();
+  const raw = params.app_id + keys.map(k=>k+params[k]).join('') + 'APP_KEY_PLACEHOLDER' + ts;
+  return { sign: md5(raw), timestamp: ts };
+}
+function md5(s){ // 简化MD5(仅演示,正式由软件服务端签名)
+  return 'md5_demo';
+}
+async function api(path, body={}){
+  const h = {'Content-Type':'application/json'};
+  const b = {...body, app_id: APP_ID};
+  const r = await fetch('/api/app'+path, {method:'POST', headers:h, body:JSON.stringify(b)});
+  return r.json();
+}
+function loadAppInfo(){
+  fetch('/api/app/info?app_id='+APP_ID).then(r=>r.json()).then(d=>{
+    if(d.code===200 && d.data){
+      document.getElementById('brandName').textContent = d.data.app_name || '软件授权充值';
+      document.getElementById('pageTitle').textContent = d.data.app_name || '软件授权充值';
+      if(d.data.logo_url) document.getElementById('brandLogo').src = d.data.logo_url;
+    }
+  }).catch(()=>{});
+}
+document.getElementById('btnLogin').onclick = async () => {
+  username = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  if(!username || !p) return alert('请填写账号密码');
+  setStatus('登录中...', 'warn');
+  let r = await api('/page/login', {username, password});
+  if(r.code!==200){
+    r = await api('/page/register', {username, password});
+    if(r.code!==200) return setStatus('注册失败: '+r.msg, 'err');
+    r = await api('/page/login', {username, password});
+  }
+  token = r.data.token;
+  document.getElementById('btnPay').disabled = false;
+  setStatus('✅ 登录成功', 'ok');
+  log('登录成功: '+username);
+};
+document.getElementById('btnPay').onclick = async () => {
+  const goods = document.getElementById('goods').value;
+  setStatus('正在下单...', 'warn');
+  const r = await api('/page/recharge/create', {token, goods_type:parseInt(goods)});
+  if(r.code!==200) return setStatus('下单失败: '+r.msg, 'err');
+  const {order_sn, amount, pay_url} = r.data;
+  log('订单: '+order_sn+' ¥'+amount);
+  setStatus('⏳ 请用微信扫码支付 ¥'+amount, 'warn');
+  document.getElementById('qrWrap').classList.add('show');
+  const qrUrl = pay_url.startsWith('weixin://') ? pay_url : pay_url;
+  QRCode.toDataURL(qrUrl, {width:220, margin:1}, (err, url)=>{
+    if(err){ log('二维码生成失败: '+err); return; }
+    const img=document.createElement('img'); img.src=url;
+    const wrap=document.getElementById('qrcode'); wrap.innerHTML=''; wrap.appendChild(img);
+  });
+  pollStatus(order_sn);
+};
+let pollTimer;
+function pollStatus(order_sn){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async ()=>{
+    const r = await fetch('/api/app/recharge/query?app_id='+APP_ID+'&token='+token+'&order_sn='+order_sn).then(r=>r.json());
+    if(r.code===200 && r.data && r.data.status===1){
+      clearInterval(pollTimer);
+      setStatus('🎉 支付成功！权限已开通', 'ok');
+      log('✅ 支付成功 '+order_sn);
+    }
+  }, 3000);
+}
+if(!APP_ID){ showErr('链接无效：缺少软件标识'); } else { loadAppInfo(); }
+</script>
+</body>
+</html>
