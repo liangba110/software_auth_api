@@ -89,7 +89,7 @@ def _create_native_pay(order_sn: str, amount: float) -> str:
 # ============ 软件信息（公开，收银台用）============
 @router.get("/info")
 @limiter.limit("30/minute")
-async def app_info(app_id: str, db: Session = Depends(get_db)):
+async def app_info(request: Request, app_id: str, db: Session = Depends(get_db)):
     app = require_app(app_id, db)
     if not app:
         return fail(code=404, msg="软件不存在")
