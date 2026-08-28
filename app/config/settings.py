@@ -4,7 +4,7 @@ import os
 class Settings:
     # 项目
     PROJECT_NAME = "软件登录充值授权API"
-    DEBUG = True
+    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     HOST = "0.0.0.0"
     PORT = 8000
 

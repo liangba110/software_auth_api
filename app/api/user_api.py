@@ -23,6 +23,10 @@ router = APIRouter()
 @router.post("/register")
 @limiter.limit("5/minute")
 async def register(request: Request, data: RegisterSchema, db: Session = Depends(get_db)):
+    # 密码强度校验
+    ok, msg = check_password_strength(data.password)
+    if not ok:
+        return fail(msg=msg)
     ok, msg = user_register(db, data.username, data.password)
     if not ok:
         return fail(msg=msg)
