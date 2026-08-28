@@ -34,6 +34,14 @@ def create_token(user_id: int, username: str, app_id: str = None) -> str:
 def parse_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        # 检查Redis黑名单（logout后token失效）
+        try:
+            import redis as _redis
+            r = _redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB, decode_responses=True)
+            if r.exists(f"blacklist:{token}"):
+                return None
+        except Exception:
+            pass
         return payload
     except jwt.ExpiredSignatureError:
         return None
