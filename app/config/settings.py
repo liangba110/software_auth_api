@@ -4,7 +4,7 @@ import os
 class Settings:
     # 项目
     PROJECT_NAME = "软件登录充值授权API"
-    DEBUG = True
+    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     HOST = "0.0.0.0"
     PORT = 8000
 
@@ -12,7 +12,7 @@ class Settings:
     DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
     DB_PORT = int(os.getenv("DB_PORT", 3306))
     DB_USER = os.getenv("DB_USER", "root")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "")  # 必须从环境变量读取！
     DB_NAME = os.getenv("DB_NAME", "software_auth")
     DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
@@ -23,7 +23,7 @@ class Settings:
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 
     # JWT（生产环境必须用随机密钥: python3 -c "import secrets; print(secrets.token_hex(32))"）
-    JWT_SECRET = os.getenv("JWT_SECRET", "")
+    JWT_SECRET = os.getenv("JWT_SECRET", "f3cfafcf41295f2500b39e2a0837a5e05beec3b7c4beee62a6ff6d7e20610b4f")
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRE_HOURS = 24 * 7  # 7天
 
@@ -32,7 +32,8 @@ class Settings:
     LOCK_SECOND = 600          # 锁定时长(秒) 10分钟
 
     # 支付回调签名密钥（生产请改为随机强密钥并切换为支付宝RSA2/微信V3官方验签）
-    CALLBACK_SIGN_KEY = os.getenv("CALLBACK_SIGN_KEY", "")
+    GATEWAY_TOKEN = os.getenv("GATEWAY_TOKEN", "huizhiyun_gateway_2026")  # 网关简单Token
+    CALLBACK_SIGN_KEY = os.getenv("CALLBACK_SIGN_KEY", "6811244fda862f9491c75bae0685c7ceec9d2f6300f519a5")
 
 
 settings = Settings()
