@@ -63,7 +63,10 @@ async def swagger_ui_redirect():
 
 @app.get("/")
 async def root():
-    return {"code": 200, "msg": "服务运行正常", "docs": "/docs"}
+    from pathlib import Path
+    html = Path(__file__).parent / "templates" / "index.html"
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(html.read_text(encoding="utf-8"))
 
 
 # 支付测试页
